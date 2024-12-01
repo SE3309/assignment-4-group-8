@@ -363,6 +363,41 @@ module.exports = {
     });
   },
 
+  getOrderDetails: (req, res) => {
+    const orderId = req.params.id;
+    const userId = req.session.user.id;
+
+    // Query to get order items with product details
+    const query = `
+        SELECT oi.quantity, i.description, i.price, i.product_id, i.category
+        FROM OrderItems oi
+        JOIN Inventory i ON oi.product_id = i.product_id
+        JOIN Orders o ON oi.order_id = o.order_id
+        WHERE oi.order_id = ? AND o.user_id = ?
+    `;
+
+    db.query(query, [orderId, userId], (err, results) => {
+      if (err) {
+        console.error("Error fetching order details:", err);
+        return res
+          .status(500)
+          .json({ error: "Failed to retrieve order details" });
+      }
+
+      // If no results found, it could mean the order doesn't belong to the user
+      if (results.length === 0) {
+        return res
+          .status(403)
+          .json({ error: "Unauthorized access to order details" });
+      }
+
+      console.log(results);
+
+      // Send order items as JSON response
+      res.json(results);
+    });
+  },
+
   // Modify placeOrderPage to include cart items
   placeOrderPage: (req, res) => {
     const userId = req.session.user.id;

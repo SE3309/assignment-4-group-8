@@ -114,6 +114,7 @@ const {
   viewUserProfile,
   placeOrder,
   placeOrderPage,
+  getOrderDetails,
   viewOrders,
   applyVoucher,
   loginPage,
@@ -151,6 +152,7 @@ app.get("/edit-product/:id", requireAuth, editProductPage);
 app.post("/edit-product/:id", requireAuth, editProduct);
 app.get("/delete-product/:id", requireAuth, deleteProduct);
 app.get("/user-profile/:id", requireAuth, viewUserProfile);
+app.get("/order-details/:id", requireAuth, getOrderDetails);
 app.post("/place-order", requireAuth, placeOrder);
 app.get("/place-order", requireAuth, placeOrderPage);
 app.get("/view-orders", requireAuth, viewOrders);
