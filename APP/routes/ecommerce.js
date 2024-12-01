@@ -232,14 +232,24 @@ module.exports = {
   },
 
   viewOrders: (req, res) => {
-    let query = "SELECT * FROM Orders ORDER BY order_date DESC";
-    db.query(query, (err, result) => {
+    // Get the logged-in user's ID from the session
+    const userId = req.session.user.id;
+
+    // Query to select only orders for the logged-in user
+    let query =
+      "SELECT * FROM Orders WHERE user_id = ? ORDER BY order_date DESC";
+
+    db.query(query, [userId], (err, result) => {
       if (err) {
-        return res.status(500).send(err);
+        console.error("Error fetching orders:", err);
+        return res.status(500).send("Error retrieving orders");
       }
+
       res.render("view-orders.ejs", {
-        title: "View Orders",
+        title: "My Orders",
         orders: result,
+        // Add a message if no orders exist
+        noOrders: result.length === 0,
       });
     });
   },
