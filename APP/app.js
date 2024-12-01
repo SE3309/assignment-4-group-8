@@ -118,6 +118,7 @@ const {
   applyVoucher,
   loginPage,
   login,
+  addToCart,
   logout,
   register,
   registerPage,
@@ -144,6 +145,7 @@ app.get("/", requireAuth, getHomePage);
 app.get("/account-management", requireAuth, accountManagement);
 app.post("/update-profile", requireAuth, updateProfile);
 app.get("/add-product", requireAuth, addProductPage);
+app.post("/add-to-cart", requireAuth, addToCart);
 app.post("/add-product", requireAuth, addProduct);
 app.get("/edit-product/:id", requireAuth, editProductPage);
 app.post("/edit-product/:id", requireAuth, editProduct);

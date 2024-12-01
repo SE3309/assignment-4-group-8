@@ -29,6 +29,11 @@
             <td><%= product.size %></td>
             <td><%= product.color %></td>
             <td>
+              <form action="/add-to-cart" method="post" class="d-inline">
+                <input type="hidden" name="product_id" value="<%= product.product_id %>">
+                <input type="number" name="quantity" value="1" min="1" max="<%= product.quantity_in_stock %>" class="form-control-sm" style="width: 70px;">
+                <button type="submit" class="btn btn-sm btn-primary">Add to Cart</button>
+              </form>
               <a href="/edit-product/<%= product.product_id %>" class="btn btn-sm btn-success">Edit</a>
               <a href="/delete-product/<%= product.product_id %>" class="btn btn-sm btn-danger">Delete</a>
             </td>

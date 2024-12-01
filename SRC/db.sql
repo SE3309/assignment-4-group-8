@@ -9,10 +9,15 @@ CREATE TABLE User (
     phone_number VARCHAR(20)
 );
 
--- Shoppingcart Table
+-- Update Shoppingcart Table to be more structured
 CREATE TABLE Shoppingcart (
     shoppingcart_id INT AUTO_INCREMENT PRIMARY KEY,
-    list_of_items TEXT
+    user_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    FOREIGN KEY (user_id) REFERENCES User(user_id),
+    FOREIGN KEY (product_id) REFERENCES Inventory(product_id),
+    UNIQUE KEY unique_cart_item (user_id, product_id)
 );
 
 -- Inventory Table

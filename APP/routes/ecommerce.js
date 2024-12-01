@@ -363,61 +363,133 @@ module.exports = {
     });
   },
 
+  // Modify placeOrderPage to include cart items
   placeOrderPage: (req, res) => {
-    let userId = req.session.user.id;
-    console.log(userId);
-    let query = "SELECT * FROM User WHERE user_id = ?";
-    db.query(query, [userId], (err, result) => {
+    const userId = req.session.user.id;
+
+    const userQuery = "SELECT * FROM User WHERE user_id = ?";
+    db.query(userQuery, [userId], (err, userResult) => {
       if (err) {
         return res.status(500).send(err);
       }
-      res.render("place-order.ejs", {
-        title: "Place Order",
-        user: result[0],
+
+      // Get cart items and total
+      const query = `
+            SELECT sc.quantity, i.* 
+            FROM Shoppingcart sc 
+            JOIN Inventory i ON sc.product_id = i.product_id 
+            WHERE sc.user_id = ?
+        `;
+
+      db.query(query, [userId], (cartErr, cartItems) => {
+        if (cartErr) {
+          return res.status(500).send(cartErr);
+        }
+
+        console.log(cartItems);
+
+        // Calculate total amount
+        const totalAmount = cartItems.reduce((total, item) => {
+          return total + item.price * item.quantity;
+        }, 0);
+
+        res.render("place-order.ejs", {
+          title: "Place Order",
+          user: userResult[0],
+          cartItems: cartItems,
+          totalAmount: totalAmount.toFixed(2),
+        });
       });
     });
   },
+
   placeOrder: (req, res) => {
-    let {
-      user_id,
-      total_amount,
-      order_status,
-      shipping_address,
-      billing_address,
-    } = req.body;
+    const userId = req.session.user.id;
+    const { total_amount, order_status, shipping_address, billing_address } =
+      req.body;
 
-    // Validate input data (example)
-    if (!user_id || !total_amount || !shipping_address || !billing_address) {
-      return res.status(400).send("Missing required fields");
-    }
+    // First, get cart items
+    const cartQuery = `
+        SELECT sc.quantity, i.* 
+        FROM Shoppingcart sc 
+        JOIN Inventory i ON sc.product_id = i.product_id 
+        WHERE sc.user_id = ?
+    `;
 
-    // Get the current date for order_date
-    let order_date = new Date().toISOString().slice(0, 10); // Format as YYYY-MM-DD
-
-    // Insert order into Orders table
-    let query = `INSERT INTO Orders (user_id, order_date, total_amount, order_status, shipping_address, billing_address) 
-                 VALUES (?, ?, ?, ?, ?, ?)`;
-
-    db.query(
-      query,
-      [
-        user_id,
-        order_date,
-        total_amount,
-        order_status,
-        shipping_address,
-        billing_address,
-      ],
-      (err, result) => {
-        if (err) {
-          console.error("Error placing order:", err);
-          return res.status(500).send("Failed to place order.");
-        }
-
-        // Redirect to orders page after successfully placing the order
-        res.redirect("/view-orders");
+    db.query(cartQuery, [userId], (cartErr, cartItems) => {
+      if (cartErr) {
+        console.error("Cart retrieval error:", cartErr);
+        return res.status(500).send("Error processing order");
       }
-    );
+
+      // Validate cart is not empty
+      if (cartItems.length === 0) {
+        return res.status(400).send("Cart is empty");
+      }
+
+      // Calculate total amount
+      const calculatedTotal = cartItems.reduce((total, item) => {
+        return total + item.price * item.quantity;
+      }, 0);
+
+      // Get the current date for order_date
+      const order_date = new Date().toISOString().slice(0, 10);
+
+      // Insert order
+      const orderQuery = `
+            INSERT INTO Orders (user_id, order_date, total_amount, order_status, shipping_address, billing_address) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        `;
+
+      db.query(
+        orderQuery,
+        [
+          userId,
+          order_date,
+          calculatedTotal,
+          order_status,
+          shipping_address,
+          billing_address,
+        ],
+        (orderErr, orderResult) => {
+          if (orderErr) {
+            console.error("Order insertion error:", orderErr);
+            return res.status(500).send("Error creating order");
+          }
+
+          const orderId = orderResult.insertId;
+
+          // Insert order items
+          const orderItemsQuery = `
+                    INSERT INTO OrderItems (order_id, product_id, quantity, category) 
+                    VALUES ?
+                `;
+
+          const orderItemsValues = cartItems.map((item) => [
+            orderId,
+            item.product_id,
+            item.quantity,
+            item.category,
+          ]);
+
+          db.query(orderItemsQuery, [orderItemsValues], (orderItemsErr) => {
+            if (orderItemsErr) {
+              console.error("Order items insertion error:", orderItemsErr);
+              return res.status(500).send("Error processing order items");
+            }
+
+            // Clear the shopping cart after order
+            const clearCartQuery = "DELETE FROM Shoppingcart WHERE user_id = ?";
+            db.query(clearCartQuery, [userId], (clearErr) => {
+              if (clearErr) {
+                console.error("Cart clearing error:", clearErr);
+              }
+              res.redirect("/view-orders");
+            });
+          });
+        }
+      );
+    });
   },
 
   viewOrders: (req, res) => {
@@ -456,6 +528,90 @@ module.exports = {
         return res.status(500).send(err);
       }
       res.redirect("/view-orders");
+    });
+  },
+
+  // Add Item to Cart
+  addToCart: (req, res) => {
+    const userId = req.session.user.id;
+    const { product_id, quantity } = req.body;
+
+    // Validate input
+    if (!product_id || !quantity) {
+      return res.status(400).send("Product ID and Quantity are required");
+    }
+
+    // First, check if the product exists in inventory
+    const checkProductQuery = "SELECT * FROM Inventory WHERE product_id = ?";
+    db.query(checkProductQuery, [product_id], (err, productResults) => {
+      if (err) {
+        console.error("Error checking product:", err);
+        return res.status(500).send("Error adding to cart");
+      }
+
+      if (productResults.length === 0) {
+        return res.status(404).send("Product not found");
+      }
+
+      // Check if product is already in cart, if so, update quantity
+      const checkCartQuery =
+        "SELECT * FROM Shoppingcart WHERE user_id = ? AND product_id = ?";
+      db.query(checkCartQuery, [userId, product_id], (err, cartResults) => {
+        if (err) {
+          console.error("Error checking cart:", err);
+          return res.status(500).send("Error adding to cart");
+        }
+
+        if (cartResults.length > 0) {
+          // Update existing cart item
+          const updateQuery =
+            "UPDATE Shoppingcart SET quantity = quantity + ? WHERE user_id = ? AND product_id = ?";
+          db.query(updateQuery, [quantity, userId, product_id], (err) => {
+            if (err) {
+              console.error("Error updating cart:", err);
+              return res.status(500).send("Error updating cart");
+            }
+            res.redirect("/place-order");
+          });
+        } else {
+          // Insert new cart item
+          const insertQuery =
+            "INSERT INTO Shoppingcart (user_id, product_id, quantity) VALUES (?, ?, ?)";
+          db.query(insertQuery, [userId, product_id, quantity], (err) => {
+            if (err) {
+              console.error("Error inserting to cart:", err);
+              return res.status(500).send("Error adding to cart");
+            }
+            res.redirect("/place-order");
+          });
+        }
+      });
+    });
+  },
+
+  // Get Shopping Cart Items
+  getShoppingCart: (req, res) => {
+    const userId = req.session.user.id;
+
+    const query = `
+        SELECT sc.quantity, i.* 
+        FROM Shoppingcart sc 
+        JOIN Inventory i ON sc.product_id = i.product_id 
+        WHERE sc.user_id = ?
+    `;
+
+    db.query(query, [userId], (err, cartItems) => {
+      if (err) {
+        console.error("Error fetching cart:", err);
+        return res.status(500).send("Error retrieving cart");
+      }
+
+      // Calculate total amount
+      const totalAmount = cartItems.reduce((total, item) => {
+        return total + item.price * item.quantity;
+      }, 0);
+
+      return { cartItems, totalAmount };
     });
   },
 };

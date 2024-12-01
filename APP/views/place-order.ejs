@@ -2,6 +2,29 @@
     <div class="container">
         <div class="form-wrapper">
             <h2>Place New Order</h2>
+            <div class="cart-items mb-4">
+                <h3>Cart Items</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% cartItems.forEach((item) => { %>
+                            <tr>
+                                <td><%= item.description %></td>
+                                <td>$<%= item.price %></td>
+                                <td><%= item.quantity %></td>
+                                <td>$<%= (item.price * item.quantity) %></td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
             <form action="/place-order" method="post">
                 <div class="form-row">
                     <div class="form-group col-md-6">
@@ -11,7 +34,8 @@
                     </div>
                     <div class="form-group col-md-6">
                         <label for="total_amount">Total Amount</label>
-                        <input type="number" step="0.01" class="form-control" name="total_amount" id="total_amount" required>
+                        <input type="number" step="0.01" class="form-control" name="total_amount" id="total_amount" 
+                               value="<%= totalAmount %>" readonly required>
                     </div>
                 </div>
                 <div class="form-row">
