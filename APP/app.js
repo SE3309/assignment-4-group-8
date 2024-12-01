@@ -119,6 +119,8 @@ const {
   loginPage,
   login,
   logout,
+  accountManagement,
+  updateProfile,
 } = require("./routes/ecommerce.js");
 
 // Middleware to check authentication (add this before other routes)
@@ -135,6 +137,8 @@ app.get("/login", loginPage);
 app.post("/login", login);
 app.get("/logout", logout);
 app.get("/", requireAuth, getHomePage);
+app.get("/account-management", requireAuth, accountManagement);
+app.post("/update-profile", requireAuth, updateProfile);
 app.get("/add-product", requireAuth, addProductPage);
 app.post("/add-product", requireAuth, addProduct);
 app.get("/edit-product/:id", requireAuth, editProductPage);

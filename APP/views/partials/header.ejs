@@ -30,6 +30,9 @@
           <a class="nav-item nav-link" href="/add-product">Add Product</a>
           <a class="nav-item nav-link" href="/view-orders">View Orders</a>
           <a class="nav-item nav-link" href="/place-order">Place Order</a>
+          <% if (locals.user) { %>
+          <a class="nav-item nav-link" href="/account-management">Account</a>
+          <% } %>
         </div>
         <div class="navbar-nav">
           <% if (locals.user) { %>

@@ -7,7 +7,7 @@
                     <div class="form-group col-md-6">
                         <label for="user_id">User ID</label>
                         <input type="number" class="form-control" name="user_id" id="user_id" 
-                               value="<%= user.id %>" readonly required>
+                               value="<%= user.user_id %>" readonly required>
                     </div>
                     <div class="form-group col-md-6">
                         <label for="total_amount">Total Amount</label>
@@ -17,11 +17,15 @@
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         <label for="shipping_address">Shipping Address</label>
-                        <textarea class="form-control" name="shipping_address" id="shipping_address" required></textarea>
+                        <textarea 
+                            class="form-control" 
+                            name="shipping_address" 
+                            id="shipping_address" 
+                            required><%= user.shipping_address || '' %></textarea>
                     </div>
                     <div class="form-group col-md-6">
                         <label for="billing_address">Billing Address</label>
-                        <textarea class="form-control" name="billing_address" id="billing_address" required></textarea>
+                        <textarea class="form-control" name="billing_address" id="billing_address" required><%= user.billing_address || '' %></textarea>
                     </div>
                 </div>
                 <div class="form-group">

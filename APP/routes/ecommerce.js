@@ -70,6 +70,129 @@ module.exports = {
     });
   },
 
+  // Account Management Page
+  accountManagement: (req, res) => {
+    const userId = req.session.user.id;
+
+    const query = "SELECT * FROM User WHERE user_id = ?";
+
+    db.query(query, [userId], (err, results) => {
+      if (err) {
+        console.error("Error fetching user details:", err);
+        return res.status(500).send("Error retrieving user details");
+      }
+
+      if (results.length === 0) {
+        // Logout user if no user found
+        req.session.destroy();
+        return res.redirect("/login");
+      }
+
+      const user = results[0];
+
+      res.render("account-management.ejs", {
+        title: "Account Management",
+        user: user,
+        message: req.flash("message") || "",
+        messageType: req.flash("messageType") || "alert-info",
+      });
+    });
+  },
+
+  // Update Profile Route
+  updateProfile: async (req, res) => {
+    const userId = req.session.user.id;
+    const {
+      email,
+      shipping_address,
+      billing_address,
+      phone_number,
+      current_password,
+      new_password,
+      confirm_password,
+    } = req.body;
+
+    try {
+      // First, verify current user
+      const userQuery = "SELECT * FROM User WHERE user_id = ?";
+      const [user] = await new Promise((resolve, reject) => {
+        db.query(userQuery, [userId], (err, results) => {
+          if (err) reject(err);
+          resolve(results);
+        });
+      });
+
+      // Prepare update queries
+      const updateFields = {
+        email,
+        shipping_address,
+        billing_address,
+        phone_number,
+      };
+
+      // Handle password change if new password provided
+      if (new_password) {
+        // Validate current password
+        if (!current_password) {
+          req.flash(
+            "message",
+            "Current password is required to change password"
+          );
+          req.flash("messageType", "alert-danger");
+          return res.redirect("/account-management");
+        }
+
+        // Verify current password
+        const passwordMatch = current_password === user.password; // Replace with proper bcrypt comparison in production
+        if (!passwordMatch) {
+          req.flash("message", "Current password is incorrect");
+          req.flash("messageType", "alert-danger");
+          return res.redirect("/account-management");
+        }
+
+        // Validate new password
+        if (new_password !== confirm_password) {
+          req.flash("message", "New passwords do not match");
+          req.flash("messageType", "alert-danger");
+          return res.redirect("/account-management");
+        }
+
+        // Add new password to update fields
+        updateFields.password = new_password; // In production, use bcrypt.hash()
+      }
+
+      // Construct dynamic update query
+      const updateQuery = `
+        UPDATE User 
+        SET ${Object.keys(updateFields)
+          .map((key) => `${key} = ?`)
+          .join(", ")} 
+        WHERE user_id = ?
+      `;
+
+      const queryParams = [...Object.values(updateFields), userId];
+
+      // Execute update
+      db.query(updateQuery, queryParams, (err) => {
+        if (err) {
+          console.error("Update error:", err);
+          req.flash("message", "Error updating profile");
+          req.flash("messageType", "alert-danger");
+          return res.redirect("/account-management");
+        }
+
+        req.flash("message", "Profile updated successfully");
+        req.flash("messageType", "alert-success");
+        res.redirect("/account-management");
+      });
+    } catch (error) {
+      console.error("Profile update error:", error);
+      req.flash("message", "An unexpected error occurred");
+      req.flash("messageType", "alert-danger");
+      res.redirect("/account-management");
+    }
+  },
+
   addProductPage: (req, res) => {
     res.render("add-product.ejs", {
       title: "Add New Product",
@@ -183,9 +306,17 @@ module.exports = {
   },
 
   placeOrderPage: (req, res) => {
-    res.render("place-order.ejs", {
-      title: "Place Order",
-      message: "",
+    let userId = req.session.user.id;
+    console.log(userId);
+    let query = "SELECT * FROM User WHERE user_id = ?";
+    db.query(query, [userId], (err, result) => {
+      if (err) {
+        return res.status(500).send(err);
+      }
+      res.render("place-order.ejs", {
+        title: "Place Order",
+        user: result[0],
+      });
     });
   },
   placeOrder: (req, res) => {
