@@ -119,6 +119,8 @@ const {
   loginPage,
   login,
   logout,
+  register,
+  registerPage,
   accountManagement,
   updateProfile,
 } = require("./routes/ecommerce.js");
@@ -136,6 +138,8 @@ const requireAuth = (req, res, next) => {
 app.get("/login", loginPage);
 app.post("/login", login);
 app.get("/logout", logout);
+app.get("/register", registerPage);
+app.post("/register", register);
 app.get("/", requireAuth, getHomePage);
 app.get("/account-management", requireAuth, accountManagement);
 app.post("/update-profile", requireAuth, updateProfile);

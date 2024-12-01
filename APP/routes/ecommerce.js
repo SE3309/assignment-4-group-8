@@ -70,6 +70,64 @@ module.exports = {
     });
   },
 
+  registerPage: (req, res) => {
+    res.render("register.ejs", {
+      title: "Register",
+      message: req.flash("error"),
+    });
+  },
+
+  register: async (req, res) => {
+    const { username, email, password, confirmPassword } = req.body;
+
+    // Basic validation
+    if (!username || !email || !password || !confirmPassword) {
+      req.flash("error", "All fields are required");
+      return res.redirect("/register");
+    }
+
+    if (password !== confirmPassword) {
+      req.flash("error", "Passwords do not match");
+      return res.redirect("/register");
+    }
+
+    try {
+      // Check if the username already exists
+      const userExistsQuery = "SELECT * FROM User WHERE username = ?";
+      const [existingUser] = await new Promise((resolve, reject) => {
+        db.query(userExistsQuery, [username], (err, results) => {
+          if (err) reject(err);
+          resolve(results);
+        });
+      });
+
+      if (existingUser) {
+        req.flash("error", "Username is already taken");
+        return res.redirect("/register");
+      }
+      // Insert new user into the database
+      const insertUserQuery = `
+        INSERT INTO User (username, email, password) 
+        VALUES (?, ?, ?)`;
+
+      db.query(insertUserQuery, [username, email, password], (err) => {
+        if (err) {
+          console.error("Error registering user:", err);
+          req.flash("error", "An error occurred during registration");
+          return res.redirect("/register");
+        }
+
+        // Redirect to login after successful registration
+        req.flash("success", "Registration successful! Please log in.");
+        res.redirect("/login");
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      req.flash("error", "An unexpected error occurred");
+      res.redirect("/register");
+    }
+  },
+
   // Account Management Page
   accountManagement: (req, res) => {
     const userId = req.session.user.id;
