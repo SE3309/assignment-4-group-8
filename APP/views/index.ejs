@@ -1,0 +1,43 @@
+<%- include('partials/header') %>
+<div class="container">
+    <div class="table-wrapper">
+    <h2>Inventory</h2>
+    <% if (noProducts) { %>
+    <p>There are no products in stock at the moment</p>
+        <% } else { %>
+    <table class="table table-hover">
+        <thead class="thead-dark">
+        <tr>
+          <th>Product ID</th>
+          <th>Description</th>
+          <th>Price</th>
+          <th>Quantity in Stock</th>
+          <th>Category</th>
+          <th>Size</th>
+          <th>Color</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% products.forEach((product) => { %>
+          <tr>
+            <td><%= product.product_id %></td>
+            <td><%= product.description %></td>
+            <td>$<%= product.price %></td>
+            <td><%= product.quantity_in_stock %></td>
+            <td><%= product.category %></td>
+            <td><%= product.size %></td>
+            <td><%= product.color %></td>
+            <td>
+              <a href="/edit-product/<%= product.product_id %>" class="btn btn-sm btn-success">Edit</a>
+              <a href="/delete-product/<%= product.product_id %>" class="btn btn-sm btn-danger">Delete</a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    </div>
+</div>
+  <% } %>
+  </tbody>
+</table>

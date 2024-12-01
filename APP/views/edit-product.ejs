@@ -1,0 +1,46 @@
+<%- include('partials/header') %>
+    <div class="container">
+        <% if (message != '') { %>
+            <p class="text-center text-danger"><%= message %></p>
+        <% } %>
+        <form class="form-wrapper" action="/edit-product/<%= product.product_id %>" method="post">
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="description">Product Description</label>
+                    <input type="text" class="form-control" name="description" id="description" value="<%= product.description %>" required>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="price">Price</label>
+                    <input type="number" step="0.01" class="form-control" name="price" id="price" value="<%= product.price %>" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="quantity_in_stock">Quantity in Stock</label>
+                    <input type="number" class="form-control" name="quantity_in_stock" id="quantity_in_stock" value="<%= product.quantity_in_stock %>" required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="size">Size</label>
+                    <input type="text" class="form-control" name="size" id="size" value="<%= product.size %>">
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="color">Color</label>
+                    <input type="text" class="form-control" name="color" id="color" value="<%= product.color %>">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select class="form-control" name="category" id="category" required>
+                    <option value="<%= product.category %>"><%= product.category %></option>
+                    <option>Electronics</option>
+                    <option>Clothing</option>
+                    <option>Home & Kitchen</option>
+                    <option>Books</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success">Update Product</button>
+        </form>
+    </div>
+</body>
+</html>

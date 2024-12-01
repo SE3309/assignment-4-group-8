@@ -1,0 +1,55 @@
+<%- include('partials/header') %>
+<div class="container">
+    <% if (message != '') { %>
+        <p class="text-center text-danger"><%= message %></p>
+    <% } %>
+    <form class="form-wrapper" action="/add-product" method="post">
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                <label for="description">Product Description</label>
+                <input type="text" class="form-control" name="description" id="description" placeholder="Product Description" required>
+            </div>
+            <div class="form-group col-md-6">
+                <label for="price">Price</label>
+                <input type="number" step="0.01" class="form-control" name="price" id="price" placeholder="Price" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group col-md-4">
+                <label for="quantity_in_stock">Quantity in Stock</label>
+                <input type="number" class="form-control" name="quantity_in_stock" id="quantity_in_stock" placeholder="Quantity" required>
+            </div>
+            <div class="form-group col-md-4">
+                <label for="size">Size</label>
+                <input type="text" class="form-control" name="size" id="size" placeholder="Size">
+            </div>
+            <div class="form-group col-md-4">
+                <label for="color">Color</label>
+                <input type="text" class="form-control" name="color" id="color" placeholder="Color">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                <label for="category">Category</label>
+                <select class="form-control" name="category" id="category" required>
+                    <option value="">Select Category</option>
+                    <option>Pants</option>
+                    <option>Sweater</option>
+                    <option>T-Shirt</option>
+                    <option>Vest</option>
+                    <option>Long-sleeved Shirt</option>
+                    <option>Hat</option>
+                    <option>Shoes</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            <div class="form-group col-md-6">
+                <label for="supplier_id">Supplier ID</label>
+                <input type="number" class="form-control" name="supplier_id" id="supplier_id" placeholder="Supplier ID" required>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Product</button>
+    </form>
+</div>
+</body>
+</html>
