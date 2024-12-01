@@ -1,6 +1,75 @@
-const fs = require("fs");
+const bcrypt = require("bcrypt");
 
 module.exports = {
+  // Login Page Route
+  loginPage: (req, res) => {
+    // Check if user is already logged in
+    if (req.session.user) {
+      return res.redirect("/");
+    }
+    res.render("login.ejs", {
+      title: "Login",
+      message: req.flash("error"), // Use flash messages for errors
+    });
+  },
+
+  // Login Route
+  login: (req, res) => {
+    const { username, password } = req.body;
+
+    // Validate input
+    if (!username || !password) {
+      req.flash("error", "Please enter both username and password");
+      return res.redirect("/login");
+    }
+
+    // Query to find user
+    const query = "SELECT * FROM User WHERE username = ?";
+
+    db.query(query, [username], (err, results) => {
+      if (err) {
+        console.error("Login error:", err);
+        req.flash("error", "An error occurred during login");
+        return res.redirect("/login");
+      }
+
+      // Check if user exists
+      if (results.length === 0) {
+        req.flash("error", "Invalid username or password");
+        return res.redirect("/login");
+      }
+
+      // Compare password (note: in a real app, use proper password hashing)
+      const user = results[0];
+
+      // Simple password comparison (replace with bcrypt in production)
+      if (password !== user.password) {
+        req.flash("error", "Invalid username or password");
+        return res.redirect("/login");
+      }
+
+      // Store user info in session
+      req.session.user = {
+        id: user.user_id,
+        username: user.username,
+      };
+
+      // Redirect to home page after successful login
+      res.redirect("/");
+    });
+  },
+
+  // Logout Route
+  logout: (req, res) => {
+    // Destroy the session
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+      }
+      res.redirect("/login");
+    });
+  },
+
   addProductPage: (req, res) => {
     res.render("add-product.ejs", {
       title: "Add New Product",

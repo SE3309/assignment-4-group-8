@@ -96,6 +96,12 @@ app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 app.use(fileUpload());
 app.use(flash());
+// Add this middleware after session setup
+app.use((req, res, next) => {
+  // Make session user available to all views
+  res.locals.user = req.session.user || null;
+  next();
+});
 
 // Import routes
 const { getHomePage } = require("./routes/index.js");
@@ -110,20 +116,36 @@ const {
   placeOrderPage,
   viewOrders,
   applyVoucher,
+  loginPage,
+  login,
+  logout,
 } = require("./routes/ecommerce.js");
 
+// Middleware to check authentication (add this before other routes)
+const requireAuth = (req, res, next) => {
+  if (!req.session.user) {
+    req.flash("error", "Please login to access this page");
+    return res.redirect("/login");
+  }
+  next();
+};
+
 // Define routes
-app.get("/", getHomePage);
-app.get("/add-product", addProductPage);
-app.post("/add-product", addProduct);
-app.get("/edit-product/:id", editProductPage);
-app.post("/edit-product/:id", editProduct);
-app.get("/delete-product/:id", deleteProduct);
-app.get("/user-profile/:id", viewUserProfile);
-app.post("/place-order", placeOrder);
-app.get("/place-order", placeOrderPage);
-app.get("/view-orders", viewOrders);
-app.post("/apply-voucher", applyVoucher);
+app.get("/login", loginPage);
+app.post("/login", login);
+app.get("/logout", logout);
+app.get("/", requireAuth, getHomePage);
+app.get("/add-product", requireAuth, addProductPage);
+app.post("/add-product", requireAuth, addProduct);
+app.get("/edit-product/:id", requireAuth, editProductPage);
+app.post("/edit-product/:id", requireAuth, editProduct);
+app.get("/delete-product/:id", requireAuth, deleteProduct);
+app.get("/user-profile/:id", requireAuth, viewUserProfile);
+app.post("/place-order", requireAuth, placeOrder);
+app.get("/place-order", requireAuth, placeOrderPage);
+app.get("/view-orders", requireAuth, viewOrders);
+app.post("/apply-voucher", requireAuth, applyVoucher);
+app.get("/add-product", requireAuth, addProductPage);
 
 // Start server
 app.listen(port, () => {
