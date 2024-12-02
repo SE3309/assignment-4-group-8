@@ -5,26 +5,29 @@
   <% if (recommendations.length === 0) { %>
     <p>No recommended items available.</p>
   <% } else { %>
-    <div class="row">
-      <% recommendations.forEach((item) => { %>
-        <div class="col-md-4 mb-4">
-          <div class="card">
-            <img
-              src="https://via.placeholder.com/150"
-              class="card-img-top"
-              alt="<%= item.description %>"
-            />
-            <div class="card-body">
-              <h5 class="card-title"><%= item.description %></h5>
-              <p class="card-text">
-                <strong>Category:</strong> <%= item.category %><br />
-                <strong>Color:</strong> <%= item.color %><br />
-                <strong>Price:</strong> $<%= item.price %>
-              </p>
-            </div>
-          </div>
-        </div>
-      <% }) %>
-    </div>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Product ID</th>
+          <th>Description</th>
+          <th>Price</th>
+          <th>Quantity in Stock</th>
+          <th>Category</th>
+          <th>Color</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% recommendations.forEach((item) => { %>
+          <tr>
+            <td><%= item.product_id %></td>
+            <td><%= item.description %></td>
+            <td>$<%= item.price %></td>
+            <td><%= item.quantity_in_stock %></td>
+            <td><%= item.category %></td>
+            <td><%= item.color %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
   <% } %>
 </div>

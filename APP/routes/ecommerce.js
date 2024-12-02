@@ -515,11 +515,19 @@ module.exports = {
 
             // Clear the shopping cart after order
             const clearCartQuery = "DELETE FROM Shoppingcart WHERE user_id = ?";
-            db.query(clearCartQuery, [userId], (clearErr) => {
+            db.query(clearCartQuery, [userId], async (clearErr) => {
               if (clearErr) {
                 console.error("Cart clearing error:", clearErr);
               }
-              res.redirect("/view-orders");
+
+              try {
+                // Update recommended items after the order
+                await module.exports.updateRecommendedItems(userId, db);
+                res.redirect("/view-orders");
+              } catch (updateErr) {
+                console.error("Error updating recommendations:", updateErr);
+                res.redirect("/view-orders");
+              }
             });
           });
         }
@@ -647,6 +655,93 @@ module.exports = {
       }, 0);
 
       return { cartItems, totalAmount };
+    });
+  },
+  // Updates recommended items for the user
+  updateRecommendedItems: async (userId, db) => {
+    try {
+      const orderHistoryQuery = `
+        SELECT oi.category, i.color, COUNT(*) AS frequency
+        FROM Orders o
+        JOIN OrderItems oi ON o.order_id = oi.order_id
+        JOIN Inventory i ON oi.product_id = i.product_id
+        WHERE o.user_id = ?
+        GROUP BY oi.category, i.color
+        ORDER BY frequency DESC`;
+
+      const [orderHistory] = await db.promise().query(orderHistoryQuery, [userId]);
+
+      let recommendations = [];
+      if (orderHistory.length > 0) {
+        const rankedQuery = `
+          SELECT i.product_id
+          FROM Inventory i
+          WHERE i.category IN (?) OR i.color IN (?)
+          ORDER BY RAND()
+          LIMIT 10`;
+
+        const categories = orderHistory.map((item) => item.category);
+        const colors = orderHistory.map((item) => item.color);
+
+        const [rankedRecommendations] = await db.promise().query(rankedQuery, [categories, colors]);
+        recommendations = rankedRecommendations.map((item) => item.product_id);
+      }
+
+      if (recommendations.length < 10) {
+        const randomQuery = `
+          SELECT product_id
+          FROM Inventory
+          WHERE product_id NOT IN (?)
+          ORDER BY RAND()
+          LIMIT ?`;
+
+        const excludedProducts = recommendations.length > 0 ? recommendations : [0];
+        const remainingSlots = 10 - recommendations.length;
+
+        const [randomRecommendations] = await db.promise().query(randomQuery, [excludedProducts, remainingSlots]);
+        recommendations.push(...randomRecommendations.map((item) => item.product_id));
+      }
+
+      await db.promise().query("DELETE FROM RecommendedItems WHERE user_id = ?", [userId]);
+
+      if (recommendations.length > 0) {
+        const insertQuery = `
+          INSERT INTO RecommendedItems (user_id, product_id)
+          VALUES ?`;
+        const values = recommendations.map((productId) => [userId, productId]);
+        await db.promise().query(insertQuery, [values]);
+      }
+
+      console.log(`Updated recommendations for user ${userId}`);
+    } catch (error) {
+      console.error("Error updating recommended items:", error);
+      throw new Error("Failed to update recommended items");
+    }
+  },
+  // Fetch recommended items for the logged-in user
+  getRecommendedItems: (req, res) => {
+    const userId = req.session.user?.id;
+
+    if (!userId) {
+      return res.redirect("/login");
+    }
+
+    const query = `
+      SELECT i.product_id, i.description, i.price, i.quantity_in_stock, i.category, i.color
+      FROM RecommendedItems r
+      JOIN Inventory i ON r.product_id = i.product_id
+      WHERE r.user_id = ?`;
+
+    db.query(query, [userId], (err, results) => {
+      if (err) {
+        console.error("Error fetching recommended items:", err);
+        return res.status(500).send("An error occurred while retrieving recommendations.");
+      }
+
+      res.render("recommended-items.ejs", {
+        title: "Recommended Items",
+        recommendations: results,
+      });
     });
   },
 };

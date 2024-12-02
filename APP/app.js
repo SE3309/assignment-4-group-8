@@ -7,7 +7,7 @@ const flash = require("req-flash");
 const app = express();
 const fs = require("fs");
 
-const port = 5000;
+const port = 5001;
 
 const session = require("express-session");
 // Add session middleware
@@ -125,6 +125,7 @@ const {
   registerPage,
   accountManagement,
   updateProfile,
+  getRecommendedItems,
 } = require("./routes/ecommerce.js");
 
 // Middleware to check authentication (add this before other routes)
@@ -147,17 +148,12 @@ app.get("/account-management", requireAuth, accountManagement);
 app.post("/update-profile", requireAuth, updateProfile);
 app.get("/add-product", requireAuth, addProductPage);
 app.post("/add-to-cart", requireAuth, addToCart);
-app.post("/add-product", requireAuth, addProduct);
-app.get("/edit-product/:id", requireAuth, editProductPage);
-app.post("/edit-product/:id", requireAuth, editProduct);
-app.get("/delete-product/:id", requireAuth, deleteProduct);
-app.get("/user-profile/:id", requireAuth, viewUserProfile);
-app.get("/order-details/:id", requireAuth, getOrderDetails);
 app.post("/place-order", requireAuth, placeOrder);
 app.get("/place-order", requireAuth, placeOrderPage);
 app.get("/view-orders", requireAuth, viewOrders);
 app.post("/apply-voucher", requireAuth, applyVoucher);
 app.get("/add-product", requireAuth, addProductPage);
+app.get("/recommended-items", requireAuth, getRecommendedItems);
 
 // Start server
 app.listen(port, () => {
