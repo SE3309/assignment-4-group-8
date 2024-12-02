@@ -1,0 +1,30 @@
+<%- include('partials/header') %>
+<div class="container mt-4">
+  <h1>Recommended Items</h1>
+
+  <% if (recommendations.length === 0) { %>
+    <p>No recommended items available.</p>
+  <% } else { %>
+    <div class="row">
+      <% recommendations.forEach((item) => { %>
+        <div class="col-md-4 mb-4">
+          <div class="card">
+            <img
+              src="https://via.placeholder.com/150"
+              class="card-img-top"
+              alt="<%= item.description %>"
+            />
+            <div class="card-body">
+              <h5 class="card-title"><%= item.description %></h5>
+              <p class="card-text">
+                <strong>Category:</strong> <%= item.category %><br />
+                <strong>Color:</strong> <%= item.color %><br />
+                <strong>Price:</strong> $<%= item.price %>
+              </p>
+            </div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
