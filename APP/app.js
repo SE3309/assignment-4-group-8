@@ -7,7 +7,7 @@ const flash = require("req-flash");
 const app = express();
 const fs = require("fs");
 
-const port = 5001;
+const port = 5000;
 
 const session = require("express-session");
 // Add session middleware
