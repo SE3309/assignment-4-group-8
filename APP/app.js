@@ -117,6 +117,7 @@ const {
   getOrderDetails,
   viewOrders,
   applyVoucher,
+  createVoucher,
   loginPage,
   login,
   addToCart,
@@ -126,6 +127,7 @@ const {
   accountManagement,
   updateProfile,
   getRecommendedItems,
+  voucherPage,
 } = require("./routes/ecommerce.js");
 
 // Middleware to check authentication (add this before other routes)
@@ -146,14 +148,31 @@ app.post("/register", register);
 app.get("/", requireAuth, getHomePage);
 app.get("/account-management", requireAuth, accountManagement);
 app.post("/update-profile", requireAuth, updateProfile);
-app.get("/add-product", requireAuth, addProductPage);
-app.post("/add-to-cart", requireAuth, addToCart);
-app.post("/place-order", requireAuth, placeOrder);
-app.get("/place-order", requireAuth, placeOrderPage);
-app.get("/view-orders", requireAuth, viewOrders);
-app.post("/apply-voucher", requireAuth, applyVoucher);
-app.get("/add-product", requireAuth, addProductPage);
-app.get("/recommended-items", requireAuth, getRecommendedItems);
+
+// Product routes
+app.get("/add-product", requireAuth, addProductPage); // Page to add a product
+app.post("/add-product", requireAuth, addProduct); // Add product to database
+app.get("/edit-product/:id", requireAuth, editProductPage); // Page to edit product
+app.post("/edit-product/:id", requireAuth, editProduct); // Update product
+app.post("/delete-product/:id", requireAuth, deleteProduct); // Delete product
+
+// Order routes
+app.get("/view-orders", requireAuth, viewOrders); // View all orders
+app.get("/view-orders/:id", requireAuth, getOrderDetails); // View order details
+
+// Voucher routes
+app.get("/create-voucher", voucherPage); // Page to create voucher
+app.post("/create-voucher", createVoucher); // Create a voucher
+app.post("/apply-voucher", applyVoucher); // Apply voucher to an order
+
+// Cart and Order routes
+app.post("/add-to-cart", requireAuth, addToCart); // Add product to cart
+app.post("/place-order", requireAuth, placeOrder); // Place the order
+app.get("/place-order", requireAuth, placeOrderPage); // Page for order placement
+
+// User routes
+app.get("/recommended-items", requireAuth, getRecommendedItems); // Get recommended items
+app.get("/view-user-profile", requireAuth, viewUserProfile); // View user profile
 
 // Start server
 app.listen(port, () => {

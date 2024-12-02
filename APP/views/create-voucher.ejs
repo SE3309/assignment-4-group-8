@@ -1,0 +1,127 @@
+<%- include('partials/header') %>
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h3 class="text-center mb-0">Create New Voucher</h3>
+        </div>
+        <div class="card-body">
+          <form id="createVoucherForm" action="/create-voucher" method="POST">
+            <div class="form-group">
+              <label for="voucher_type">Voucher Type</label>
+              <select
+                class="form-control"
+                id="voucher_type"
+                name="voucher_type"
+                required>
+                <option value="">Select Voucher Type</option>
+                <option value="percentage">Percentage Discount</option>
+                <option value="fixed">Fixed Amount Discount</option>
+              </select>
+              <small class="form-text text-muted">
+                Choose whether the voucher provides a percentage or fixed amount
+                off
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label for="voucher_amount">Discount Amount</label>
+              <div class="input-group">
+                <input
+                  type="number"
+                  class="form-control"
+                  id="voucher_amount"
+                  name="voucher_amount"
+                  min="1"
+                  step="0.01"
+                  required />
+                <div class="input-group-append">
+                  <span class="input-group-text" id="amount-type-display"
+                    >%</span
+                  >
+                </div>
+              </div>
+              <small class="form-text text-muted" id="amount-hint">
+                Enter percentage for percentage discount, or fixed amount for
+                fixed discount
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label for="expiration_date">Expiration Date (Optional)</label>
+              <input
+                type="date"
+                class="form-control"
+                id="expiration_date"
+                name="expiration_date" />
+              <small class="form-text text-muted">
+                Leave blank for vouchers without an expiration
+              </small>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">
+              Create Voucher
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const voucherTypeSelect = document.getElementById('voucher_type');
+        const voucherAmountInput = document.getElementById('voucher_amount');
+        const amountTypeDisplay = document.getElementById('amount-type-display');
+        const amountHint = document.getElementById('amount-hint');
+    
+        voucherTypeSelect.addEventListener('change', function () {
+            const selectedType = this.value;
+    
+            if (selectedType === 'percentage') {
+                voucherAmountInput.setAttribute('max', '100');
+                voucherAmountInput.setAttribute('step', '1');
+                amountTypeDisplay.textContent = '%';
+                amountHint.textContent = 'Enter a percentage value between 1 and 100';
+            } else if (selectedType === 'fixed') {
+                voucherAmountInput.removeAttribute('max');
+                voucherAmountInput.setAttribute('step', '0.01');
+                amountTypeDisplay.textContent = '$';
+                amountHint.textContent = 'Enter a fixed dollar amount';
+            } else {
+                amountTypeDisplay.textContent = '';
+                amountHint.textContent = 'Select a voucher type first';
+            }
+        });
+    
+        document.getElementById('createVoucherForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+    
+            const formData = new FormData(this);
+            const jsonData = Object.fromEntries(formData.entries());
+    
+            fetch('/create-voucher', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(jsonData),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.voucherId) {
+                        alert(`Voucher created successfully! Voucher ID: ${data.voucherId}`);
+                        this.reset(); // Reset form
+                    } else {
+                        alert('Failed to create voucher');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while creating the voucher');
+                });
+        });
+    });
+</script>
+</div>

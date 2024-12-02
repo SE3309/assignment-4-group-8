@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= title %></title>
     <link
       rel="stylesheet"
       href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" />
@@ -30,8 +29,11 @@
           <a class="nav-item nav-link" href="/add-product">Add Product</a>
           <a class="nav-item nav-link" href="/view-orders">View Orders</a>
           <a class="nav-item nav-link" href="/place-order">Place Order</a>
-          <a class="nav-item nav-link" href="/recommended-items">Recommended Items</a>
+          <a class="nav-item nav-link" href="/recommended-items"
+            >Recommended Items</a
+          >
           <% if (locals.user) { %>
+          <a class="nav-item nav-link" href="/create-voucher">Create Voucher</a>
           <a class="nav-item nav-link" href="/account-management">Account</a>
           <% } %>
         </div>

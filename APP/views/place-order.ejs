@@ -61,9 +61,73 @@
                         <option>Delivered</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label for="voucher_id">Apply Voucher (Optional)</label>
+                    <select class="form-control" name="voucher_id" id="voucher_id">
+                        <option value="">Select a Voucher</option>
+                        <% availableVouchers.forEach((voucher) => { %>
+                            <option value="<%= voucher.voucher_id %>">
+                                <%= voucher.voucher_type %> - 
+                                <%= voucher.voucher_amount %><%= voucher.voucher_type === 'percentage' ? '%' : '$' %>
+                                <%= voucher.clothing_type ? '- ' + voucher.clothing_type : '' %>
+                            </option>
+                        <% }) %>
+                    </select>
+                    <small id="voucher-message" class="form-text text-muted"></small>
+                </div>
+                
                 <button type="submit" class="btn btn-primary">Place Order</button>
             </form>
         </div>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const voucherSelect = document.getElementById('voucher_id');
+            const voucherMessage = document.getElementById('voucher-message');
+            const totalAmountInput = document.getElementById('total_amount');
+        
+            voucherSelect.addEventListener('change', function() {
+                const selectedVoucherId = this.value;
+                const currentTotal = parseFloat(totalAmountInput.value);
+        
+                if (!selectedVoucherId) {
+                    // Reset to original total if no voucher selected
+                    totalAmountInput.value = '<%= totalAmount %>';
+                    voucherMessage.textContent = '';
+                    return;
+                }
+        
+                // Send an AJAX request to validate and apply the voucher
+                fetch('/apply-voucher', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        voucher_id: selectedVoucherId,
+                        total_amount: currentTotal
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        totalAmountInput.value = data.newTotal.toFixed(2);
+                        voucherMessage.textContent = data.message;
+                        voucherMessage.style.color = 'green';
+                    } else {
+                        totalAmountInput.value = currentTotal.toFixed(2);
+                        voucherMessage.textContent = data.message;
+                        voucherMessage.style.color = 'red';
+                        voucherSelect.value = ''; // Reset voucher selection
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    voucherMessage.textContent = 'An error occurred while applying the voucher';
+                    voucherMessage.style.color = 'red';
+                });
+            });
+        });
+    </script>
 </body>
 </html>

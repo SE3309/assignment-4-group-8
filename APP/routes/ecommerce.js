@@ -367,13 +367,17 @@ module.exports = {
     const orderId = req.params.id;
     const userId = req.session.user.id;
 
-    // Query to get order items with product details
     const query = `
-        SELECT oi.quantity, i.description, i.price, i.product_id, i.category
-        FROM OrderItems oi
+        SELECT 
+            oi.quantity, 
+            i.description, 
+            i.price, 
+            i.product_id, 
+            i.category
+        FROM Orders o
+        JOIN OrderItems oi ON o.order_id = oi.order_id
         JOIN Inventory i ON oi.product_id = i.product_id
-        JOIN Orders o ON oi.order_id = o.order_id
-        WHERE oi.order_id = ? AND o.user_id = ?
+        WHERE o.order_id = ? AND o.user_id = ?
     `;
 
     db.query(query, [orderId, userId], (err, results) => {
@@ -384,55 +388,73 @@ module.exports = {
           .json({ error: "Failed to retrieve order details" });
       }
 
-      // If no results found, it could mean the order doesn't belong to the user
+      console.log(results);
+
       if (results.length === 0) {
         return res
           .status(403)
           .json({ error: "Unauthorized access to order details" });
       }
 
-      console.log(results);
-
-      // Send order items as JSON response
       res.json(results);
     });
   },
-
   // Modify placeOrderPage to include cart items
   placeOrderPage: (req, res) => {
     const userId = req.session.user.id;
 
     const userQuery = "SELECT * FROM User WHERE user_id = ?";
-    db.query(userQuery, [userId], (err, userResult) => {
+    db.query(userQuery, [userId], (err, users) => {
       if (err) {
         return res.status(500).send(err);
       }
 
-      // Get cart items and total
-      const query = `
-            SELECT sc.quantity, i.* 
-            FROM Shoppingcart sc 
-            JOIN Inventory i ON sc.product_id = i.product_id 
-            WHERE sc.user_id = ?
-        `;
+      const user = users[0]; // Get the first user object
+      // Get cart items
+      const cartQuery = `
+      SELECT i.*, sc.quantity 
+      FROM Shoppingcart sc
+      JOIN Inventory i ON sc.product_id = i.product_id
+      WHERE sc.user_id = ?
+    `;
 
-      db.query(query, [userId], (cartErr, cartItems) => {
+      // Get available vouchers
+      const voucherQuery = `
+      SELECT * FROM Voucher
+    `;
+
+      // Calculate total amount
+      const totalQuery = `
+      SELECT SUM(i.price * sc.quantity) as total 
+      FROM Shoppingcart sc
+      JOIN Inventory i ON sc.product_id = i.product_id
+      WHERE sc.user_id = ?
+    `;
+
+      db.query(cartQuery, [userId], (cartErr, cartItems) => {
         if (cartErr) {
-          return res.status(500).send(cartErr);
+          return res.status(500).send("Error retrieving cart items");
         }
 
-        console.log(cartItems);
+        db.query(totalQuery, [userId], (totalErr, totalResult) => {
+          if (totalErr) {
+            return res.status(500).send("Error calculating total");
+          }
 
-        // Calculate total amount
-        const totalAmount = cartItems.reduce((total, item) => {
-          return total + item.price * item.quantity;
-        }, 0);
+          db.query(voucherQuery, (voucherErr, availableVouchers) => {
+            if (voucherErr) {
+              return res.status(500).send("Error retrieving vouchers");
+            }
 
-        res.render("place-order.ejs", {
-          title: "Place Order",
-          user: userResult[0],
-          cartItems: cartItems,
-          totalAmount: totalAmount.toFixed(2),
+            console.log(user);
+
+            res.render("place-order", {
+              user: user,
+              cartItems: cartItems,
+              totalAmount: totalResult[0].total,
+              availableVouchers: availableVouchers,
+            });
+          });
         });
       });
     });
@@ -440,8 +462,13 @@ module.exports = {
 
   placeOrder: (req, res) => {
     const userId = req.session.user.id;
-    const { total_amount, order_status, shipping_address, billing_address } =
-      req.body;
+    const {
+      total_amount,
+      order_status,
+      shipping_address,
+      billing_address,
+      voucher_id,
+    } = req.body;
 
     // First, get cart items
     const cartQuery = `
@@ -462,11 +489,6 @@ module.exports = {
         return res.status(400).send("Cart is empty");
       }
 
-      // Calculate total amount
-      const calculatedTotal = cartItems.reduce((total, item) => {
-        return total + item.price * item.quantity;
-      }, 0);
-
       // Get the current date for order_date
       const order_date = new Date().toISOString().slice(0, 10);
 
@@ -481,7 +503,7 @@ module.exports = {
         [
           userId,
           order_date,
-          calculatedTotal,
+          total_amount,
           order_status,
           shipping_address,
           billing_address,
@@ -496,9 +518,9 @@ module.exports = {
 
           // Insert order items
           const orderItemsQuery = `
-                    INSERT INTO OrderItems (order_id, product_id, quantity, category) 
-                    VALUES ?
-                `;
+            INSERT INTO OrderItems (order_id, product_id, quantity, category) 
+            VALUES ?
+          `;
 
           const orderItemsValues = cartItems.map((item) => [
             orderId,
@@ -510,7 +532,8 @@ module.exports = {
           db.query(orderItemsQuery, [orderItemsValues], (orderItemsErr) => {
             if (orderItemsErr) {
               console.error("Order items insertion error:", orderItemsErr);
-              return res.status(500).send("Error processing order items");
+              // Optionally, delete the order if items insertion fails
+              return res.status(500).send("Error adding order items");
             }
 
             // Clear the shopping cart after order
@@ -529,6 +552,36 @@ module.exports = {
                 res.redirect("/view-orders");
               }
             });
+            // If a voucher was applied, insert into VoucherOrders
+            if (voucher_id) {
+              const voucherOrderQuery = `
+                INSERT INTO VoucherOrders (voucher_id, order_id, new_total) 
+                VALUES (?, ?, ?)
+              `;
+
+              db.query(
+                voucherOrderQuery,
+                [voucher_id, orderId, total_amount],
+                (voucherErr) => {
+                  if (voucherErr) {
+                    console.error("Voucher order tracking error:", voucherErr);
+                  }
+                  // Clear the cart
+                  const clearCartQuery =
+                    "DELETE FROM Shoppingcart WHERE user_id = ?";
+                  db.query(clearCartQuery, [userId], () => {
+                    res.redirect("/view-orders");
+                  });
+                }
+              );
+            } else {
+              // No voucher applied, proceed as normal
+              const clearCartQuery =
+                "DELETE FROM Shoppingcart WHERE user_id = ?";
+              db.query(clearCartQuery, [userId], () => {
+                res.redirect("/view-orders");
+              });
+            }
           });
         }
       );
@@ -555,22 +608,6 @@ module.exports = {
         // Add a message if no orders exist
         noOrders: result.length === 0,
       });
-    });
-  },
-
-  applyVoucher: (req, res) => {
-    let { voucher_id, order_id } = req.body;
-    let query =
-      "INSERT INTO VoucherOrders (voucher_id, order_id, new_total) VALUES (?, ?, ?)";
-
-    // You would typically calculate the new total based on the voucher here
-    let newTotal = 100; // Placeholder calculation
-
-    db.query(query, [voucher_id, order_id, newTotal], (err, result) => {
-      if (err) {
-        return res.status(500).send(err);
-      }
-      res.redirect("/view-orders");
     });
   },
 
@@ -669,7 +706,9 @@ module.exports = {
         GROUP BY oi.category, i.color
         ORDER BY frequency DESC`;
 
-      const [orderHistory] = await db.promise().query(orderHistoryQuery, [userId]);
+      const [orderHistory] = await db
+        .promise()
+        .query(orderHistoryQuery, [userId]);
 
       let recommendations = [];
       if (orderHistory.length > 0) {
@@ -683,7 +722,9 @@ module.exports = {
         const categories = orderHistory.map((item) => item.category);
         const colors = orderHistory.map((item) => item.color);
 
-        const [rankedRecommendations] = await db.promise().query(rankedQuery, [categories, colors]);
+        const [rankedRecommendations] = await db
+          .promise()
+          .query(rankedQuery, [categories, colors]);
         recommendations = rankedRecommendations.map((item) => item.product_id);
       }
 
@@ -695,14 +736,21 @@ module.exports = {
           ORDER BY RAND()
           LIMIT ?`;
 
-        const excludedProducts = recommendations.length > 0 ? recommendations : [0];
+        const excludedProducts =
+          recommendations.length > 0 ? recommendations : [0];
         const remainingSlots = 10 - recommendations.length;
 
-        const [randomRecommendations] = await db.promise().query(randomQuery, [excludedProducts, remainingSlots]);
-        recommendations.push(...randomRecommendations.map((item) => item.product_id));
+        const [randomRecommendations] = await db
+          .promise()
+          .query(randomQuery, [excludedProducts, remainingSlots]);
+        recommendations.push(
+          ...randomRecommendations.map((item) => item.product_id)
+        );
       }
 
-      await db.promise().query("DELETE FROM RecommendedItems WHERE user_id = ?", [userId]);
+      await db
+        .promise()
+        .query("DELETE FROM RecommendedItems WHERE user_id = ?", [userId]);
 
       if (recommendations.length > 0) {
         const insertQuery = `
@@ -718,7 +766,6 @@ module.exports = {
       throw new Error("Failed to update recommended items");
     }
   },
-  // Fetch recommended items for the logged-in user
   getRecommendedItems: (req, res) => {
     const userId = req.session.user?.id;
 
@@ -726,21 +773,114 @@ module.exports = {
       return res.redirect("/login");
     }
 
-    const query = `
-      SELECT i.product_id, i.description, i.price, i.quantity_in_stock, i.category, i.color
+    const query = `SELECT i.product_id, i.description, i.price, i.quantity_in_stock, i.category, i.color
       FROM RecommendedItems r
       JOIN Inventory i ON r.product_id = i.product_id
-      WHERE r.user_id = ?`;
+      WHERE r.user_id = ?;`;
 
     db.query(query, [userId], (err, results) => {
       if (err) {
         console.error("Error fetching recommended items:", err);
-        return res.status(500).send("An error occurred while retrieving recommendations.");
+        return res
+          .status(500)
+          .send("An error occurred while retrieving recommendations.");
       }
 
       res.render("recommended-items.ejs", {
         title: "Recommended Items",
         recommendations: results,
+      });
+    });
+  },
+
+  voucherPage: (req, res) => {
+    res.render("create-voucher.ejs", {
+      title: "Create Voucher",
+      message: req.flash("error"),
+    });
+  },
+
+  // Add a new method to create a voucher
+  createVoucher: (req, res) => {
+    const { voucher_type, clothing_type, voucher_amount } = req.body;
+
+    // Validate input
+    if (!voucher_type || !voucher_amount) {
+      return res.status(400).send("Voucher type and amount are required");
+    }
+
+    const query = `
+        INSERT INTO Voucher (voucher_type, clothing_type, voucher_amount) 
+        VALUES (?, ?, ?)
+    `;
+
+    db.query(
+      query,
+      [voucher_type, clothing_type, voucher_amount],
+      (err, result) => {
+        if (err) {
+          console.error("Error creating voucher:", err);
+          return res.status(500).send("Failed to create voucher");
+        }
+
+        res.status(201).json({
+          message: "Voucher created successfully",
+          voucherId: result.insertId,
+        });
+      }
+    );
+  },
+
+  // Method to apply voucher during order placement
+  applyVoucher: (req, res) => {
+    const { voucher_id, total_amount } = req.body;
+    const userId = req.session.user.user_id;
+
+    // Find the voucher
+    const voucherQuery = "SELECT * FROM Voucher WHERE voucher_id = ?";
+
+    db.query(voucherQuery, [voucher_id], (err, voucherResults) => {
+      if (err) {
+        console.error("Voucher lookup error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Error applying voucher",
+        });
+      }
+
+      // Check if voucher exists
+      if (voucherResults.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Invalid voucher",
+        });
+      }
+
+      const voucher = voucherResults[0];
+
+      // Calculate new total based on voucher type
+      let newTotal;
+      if (voucher.voucher_type === "percentage") {
+        newTotal = total_amount * (1 - voucher.voucher_amount / 100);
+      } else if (voucher.voucher_type === "fixed") {
+        newTotal = Math.max(0, total_amount - voucher.voucher_amount);
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid voucher type",
+        });
+      }
+
+      // Prepare voucher message
+      let message =
+        voucher.voucher_type === "percentage"
+          ? `${voucher.voucher_amount}% discount applied`
+          : `$${voucher.voucher_amount} off`;
+
+      res.json({
+        success: true,
+        message: message,
+        newTotal: newTotal,
       });
     });
   },
