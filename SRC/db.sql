@@ -33,12 +33,6 @@ CREATE TABLE Inventory (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Review Table
-CREATE TABLE Review (
-    review_id INT PRIMARY KEY,
-    review_description TEXT NOT NULL
-);
-
 -- Updated Order Table
 CREATE TABLE Orders (
     order_id INT AUTO_INCREMENT PRIMARY KEY,

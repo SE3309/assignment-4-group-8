@@ -117,6 +117,7 @@ const {
   getOrderDetails,
   viewOrders,
   applyVoucher,
+  createVoucher,
   loginPage,
   login,
   addToCart,
@@ -125,6 +126,7 @@ const {
   registerPage,
   accountManagement,
   updateProfile,
+  voucherPage,
 } = require("./routes/ecommerce.js");
 
 // Middleware to check authentication (add this before other routes)
@@ -156,7 +158,9 @@ app.get("/order-details/:id", requireAuth, getOrderDetails);
 app.post("/place-order", requireAuth, placeOrder);
 app.get("/place-order", requireAuth, placeOrderPage);
 app.get("/view-orders", requireAuth, viewOrders);
-app.post("/apply-voucher", requireAuth, applyVoucher);
+app.get("/create-voucher", voucherPage);
+app.post("/create-voucher", createVoucher);
+app.post("/apply-voucher", applyVoucher);
 app.get("/add-product", requireAuth, addProductPage);
 
 // Start server
